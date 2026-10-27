@@ -101,7 +101,8 @@ a { color: var(--accent); }
       <h2>安裝需求</h2>
       <ul>
         <li>Python 3（有 <code>python</code> 指令）</li>
-        <li><a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>：<code>python -m pip install -U yt-dlp</code></li>
+        <li><a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>（含官方附加元件）：<code>python -m pip install -U "yt-dlp[default]"</code></li>
+        <li><a href="https://deno.com/">Deno</a>（JavaScript 執行環境，YouTube 現在需要它）：<code>winget install DenoLand.Deno</code>，裝完重開視窗</li>
         <li><a href="https://ffmpeg.org/">ffmpeg</a>（含 <code>ffprobe</code>），要加進系統 PATH</li>
       </ul>
       <p>確認方式：在命令提示字元輸入 <code>python -m yt_dlp --version</code> 和 <code>ffmpeg -version</code>，兩個都印出版本號就可以了。</p>
@@ -273,7 +274,8 @@ flowchart TD
         <li><b>批量時間是統一的</b>：沒辦法替 TXT 裡個別的連結指定不同時間；要不同時間請用單筆下載。</li>
         <li><b>檔名用影片標題</b>，Windows 不允許的字元（<code>\ / : * ? " &lt; &gt; |</code>）會換成 <code>_</code>。</li>
         <li><b>「直接覆蓋原檔」無法復原</b>，轉檔時舊格式的原檔會被刪掉；不確定時先改成「另存到新資料夾」。</li>
-        <li><b>下載出現 403 / ffmpeg exited</b>：多半是 YouTube 改了機制，執行 <code>python -m pip install -U yt-dlp</code> 更新後再試。</li>
+        <li><b>下載出現 403 / ffmpeg exited</b>：多半是 YouTube 改了機制，執行 <code>python -m pip install -U "yt-dlp[default]"</code> 更新後再試。</li>
+        <li><b>下載出現 This video is not available</b>：先用瀏覽器確認影片能播放；能播放的話，多半是缺 Deno 或解題腳本（見安裝需求）。</li>
         <li><b>這份 HTML 的流程圖需要網路</b>（從 CDN 載入 Mermaid）；離線時只會顯示流程圖的原始碼。</li>
       </ul>
     </section>

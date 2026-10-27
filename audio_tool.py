@@ -318,7 +318,10 @@ def download_one(url, start_sec, secs, save_dir):
     if r.returncode != 0:
         msg = (r.stderr.strip().splitlines() or ["未知錯誤"])[-1]
         if "403" in r.stderr or "ffmpeg exited" in msg:
-            msg += "  → 多半是 YouTube 改了機制，先執行：python -m pip install -U yt-dlp"
+            msg += "  → 多半是 YouTube 改了機制，先執行：python -m pip install -U \"yt-dlp[default]\""
+        elif "not available" in msg:
+            msg += ("  → 影片若在瀏覽器能播放，多半是缺 deno 或解題腳本："
+                    "winget install DenoLand.Deno、python -m pip install -U \"yt-dlp[default]\"")
         return "失敗", msg
     if not lines:
         return "重複略過", "這部影片之前下載過（同一部影片只取一段）"
@@ -402,6 +405,9 @@ def main():
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             print(f"⚠️ 找不到 {tool}，請先安裝 ffmpeg 並加入 PATH")
+    if not shutil.which("deno"):
+        print("⚠️ 找不到 deno：YouTube 有些影片會下載失敗（not available）。"
+              "安裝：winget install DenoLand.Deno，裝完重開視窗")
     s = load_settings()
     while True:
         print("\n═══════ 音訊整理工具 ═══════")

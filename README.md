@@ -18,7 +18,8 @@
 ## 安裝需求
 
 - Python 3（有 `python` 指令）
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp)：`python -m pip install -U yt-dlp`
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)（含官方附加元件）：`python -m pip install -U "yt-dlp[default]"`
+- [Deno](https://deno.com/)（JavaScript 執行環境，YouTube 現在需要它）：`winget install DenoLand.Deno`，裝完重開視窗
 - [ffmpeg](https://ffmpeg.org/)（含 `ffprobe`），要加進系統 PATH
 
 確認方式：在命令提示字元輸入 `python -m yt_dlp --version` 和 `ffmpeg -version`，兩個都有版本號就可以了。
@@ -184,4 +185,5 @@ flowchart TD
 - **批量時間是統一的**：沒辦法替 TXT 裡個別的連結指定不同時間；要不同時間請用單筆下載。
 - **檔名用影片標題**，Windows 不允許的字元（`\ / : * ? " < > |`）會換成 `_`。
 - **「直接覆蓋原檔」無法復原**，轉檔時舊格式的原檔會被刪掉；不確定時先改成「另存到新資料夾」。
-- **下載出現 403 / ffmpeg exited**：多半是 YouTube 改了機制，執行 `python -m pip install -U yt-dlp` 更新後再試。
+- **下載出現 403 / ffmpeg exited**：多半是 YouTube 改了機制，執行 `python -m pip install -U "yt-dlp[default]"` 更新後再試。
+- **下載出現 This video is not available**：先用瀏覽器確認影片能播放；能播放的話，多半是缺 Deno 或解題腳本（見安裝需求）。
