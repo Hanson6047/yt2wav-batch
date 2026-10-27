@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>音訊整理工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* 版面：左側固定目錄 + 右側單欄內容；窄螢幕時目錄收到上方 */
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --fg: #1c211e; --muted: #5b655f; --line: #d9ded9;
+  --accent: #1f6f5c; --accent-soft: #e2efe9; --warn: #9a5b00; --warn-soft: #fbefd9;
+  --font-body: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141816; --panel: #1c211f; --fg: #e6ebe7; --muted: #a2ada6; --line: #333c37;
+    --accent: #5cc0a3; --accent-soft: #1f3530; --warn: #f0b45a; --warn-soft: #3a2e1a; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
+.layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+nav { position: sticky; top: 24px; align-self: start; font-size: 14px; display: grid; gap: 4px; }
+nav .nav-title { font-weight: 700; margin-bottom: 8px; }
+nav a { color: var(--muted); text-decoration: none; padding: 3px 10px; border-left: 2px solid var(--line); }
+nav a:hover, nav a:focus-visible { color: var(--accent); border-left-color: var(--accent); outline: none; }
+main { display: grid; gap: 48px; min-width: 0; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--muted); }
+h1 { font-size: 30px; line-height: 1.3; margin: 0; }
+h2 { font-size: 22px; margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 17px; margin: 8px 0 0; }
+p, li { max-width: 72ch; }
+p { margin: 0; }
+.lead { color: var(--muted); }
+section { display: grid; gap: 14px; scroll-margin-top: 24px; }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--accent-soft); padding: 1px 6px; border-radius: 4px; }
+pre.term { margin: 0; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; white-space: pre; }
+pre.term .in { color: var(--accent); font-weight: 500; }
+pre.term .c { color: var(--muted); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--panel); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+.note { background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 0 6px 6px 0; }
+.note b { color: var(--warn); }
+.tip { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 6px 6px 0; }
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; min-width: 560px; font-family: var(--font-mono); font-size: 12px; }
+ul, ol { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; }
+a { color: var(--accent); }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; padding: 24px 16px 64px; gap: 24px; }
+  nav { position: static; display: flex; flex-wrap: wrap; gap: 4px 8px; }
+  nav .nav-title { width: 100%; margin: 0; }
+  nav a { border-left: none; padding: 2px 8px; background: var(--panel); border-radius: 4px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav aria-label="目錄">
+    <div class="nav-title">目錄</div>
+    <a href="#features">功能</a>
+    <a href="#install">安裝需求</a>
+    <a href="#start">開始使用</a>
+    <a href="#download">下載</a>
+    <a href="#time">時間怎麼填</a>
+    <a href="#check">檢查 / 整理資料夾</a>
+    <a href="#flow">流程圖</a>
+    <a href="#files">檔案說明</a>
+    <a href="#limits">限制與注意事項</a>
+  </nav>
+
+  <main>
+    <header>
+      <div class="eyebrow">D:\D_drive_BACKUP\Code\audio_tool</div>
+      <h1>音訊整理工具</h1>
+      <p class="lead">蒐集測試音訊用的小工具：從 YouTube 下載指定區段存成 wav，以及檢查 / 整理資料夾裡音訊的格式與長度。改編自德育同學的 <code>yt2wav - time.bat</code>（一次貼一個連結、輸入開始與結束時間），這版加上選單、批量下載、資料夾檢查與設定記憶。</p>
+    </header>
+
+    <section id="features">
+      <h2>功能</h2>
+      <div class="table-wrap"><table>
+        <tr><th>功能</th><th>說明</th></tr>
+        <tr><td>單筆下載</td><td>貼一個連結，自己指定「第幾秒到第幾秒」</td></tr>
+        <tr><td>批量下載</td><td>讀 TXT（一行一個連結），開始前只問一次「從第幾秒開始、抓幾秒」，全部統一</td></tr>
+        <tr><td>擋重複下載</td><td>同一部影片（YouTube 影片 ID）在同一個儲存資料夾只下載一次</td></tr>
+        <tr><td>精準長度</td><td>下載後用 ffmpeg 修成剛好指定的長度（多的截掉、不足補靜音），16-bit wav</td></tr>
+        <tr><td>檢查 / 整理資料夾</td><td>掃描所有子資料夾，列出格式、長度不符的檔案，確認後才修改</td></tr>
+        <tr><td>設定記憶</td><td>儲存位置、TXT 路徑、批量時間、整理規則都可以記住，下次直接沿用</td></tr>
+      </table></div>
+    </section>
+
+    <section id="install">
+      <h2>安裝需求</h2>
+      <ul>
+        <li>Python 3（有 <code>python</code> 指令）</li>
+        <li><a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>：<code>python -m pip install -U yt-dlp</code></li>
+        <li><a href="https://ffmpeg.org/">ffmpeg</a>（含 <code>ffprobe</code>），要加進系統 PATH</li>
+      </ul>
+      <p>確認方式：在命令提示字元輸入 <code>python -m yt_dlp --version</code> 和 <code>ffmpeg -version</code>，兩個都印出版本號就可以了。</p>
+    </section>
+
+    <section id="start">
+      <h2>開始使用</h2>
+      <p>雙擊 <b><code>音訊工具.bat</code></b>，會出現選單：</p>
+<pre class="term">═══════ 音訊整理工具 ═══════
+1. 檢查 / 整理資料夾（時長、格式）
+2. 下載音樂
+0. 離開
+選擇 [1]：</pre>
+      <ul>
+        <li>中括號 <code>[...]</code> 裡是預設值，直接按 Enter 就是用它</li>
+        <li>資料夾、TXT 可以從檔案總管直接<b>拖進黑色視窗</b>，不用手打路徑</li>
+        <li>按 <code>Ctrl + C</code> 中斷目前的工作，回到主選單</li>
+      </ul>
+    </section>
+
+    <section id="download">
+      <h2>下載</h2>
+      <p>選 <code>2</code>，再選單筆或批量，接著選儲存位置。</p>
+
+      <h3>單筆</h3>
+<pre class="term">貼上連結：<span class="in">https://www.youtube.com/watch?v=xxxx</span>
+從第幾秒開始（例：35、1:15） [0]：<span class="in">1:00</span>
+到第幾秒結束（直接 Enter = 開始後 30 秒） [1:30.00]：<span class="in">1:10</span>   <span class="c">← 抓 1:00～1:10，共 10 秒</span></pre>
+
+      <h3>批量</h3>
+      <p>先用記事本準備一個 TXT，一行一個連結：</p>
+<pre class="term"><span class="c"># 這行是註解，會略過</span>
+https://www.youtube.com/watch?v=aaaa
+https://www.youtube.com/watch?v=bbbb
+
+https://www.youtube.com/watch?v=cccc</pre>
+      <p>空行和 <code>#</code> 開頭的行會略過；連結後面多寫的字不會使用。執行時只問一次，所有連結都套用同一個區段：</p>
+<pre class="term">全部從第幾秒開始（例：30、1:15） [0:30]：<span class="in">1:00</span>
+每段抓幾秒 [30.0]：<span class="c">（直接 Enter）</span>
+  讀到 3 個連結，全部從 1:00.00 開始抓 30 秒</pre>
+      <p class="tip">建議音樂和語音分成兩個 TXT、分兩次下載，存到不同資料夾（例如 <code>200音樂</code>、<code>200秘密</code>）。</p>
+    </section>
+
+    <section id="time">
+      <h2>時間怎麼填</h2>
+      <p>「從第幾秒開始」問的是：<b>每部影片要從哪個時間點開始剪</b>，就是 YouTube 進度條上看到的時間。</p>
+      <div class="table-wrap"><table>
+        <tr><th>想從哪裡開始</th><th>輸入</th></tr>
+        <tr><td>第 30 秒</td><td><code>30</code> 或 <code>0:30</code></td></tr>
+        <tr><td>1 分 15 秒</td><td><code>1:15</code></td></tr>
+        <tr><td>1 小時 2 分 3 秒</td><td><code>1:02:03</code></td></tr>
+        <tr><td>用上次的設定</td><td>直接按 Enter（用中括號裡的值）</td></tr>
+      </table></div>
+      <p><b>怎麼選開始時間</b></p>
+      <ul>
+        <li><b>音樂</b>：前奏通常比較安靜，建議跳過，例如從 <code>1:00</code> 開始，比較容易抓到副歌或主旋律</li>
+        <li><b>語音</b>：開頭常是片頭音樂或打招呼，建議從 <code>0:30</code> 或 <code>1:00</code> 開始</li>
+        <li>影片如果比「開始時間 + 長度」還短，不足的部分會補靜音</li>
+      </ul>
+    </section>
+
+    <section id="check">
+      <h2>檢查 / 整理資料夾</h2>
+      <p>選 <code>1</code>，可以先修改目標設定，再拖入要檢查的資料夾。工具會先列出「預計更改清單」，<b>按 <code>y</code> 之前不會動到任何檔案</b>。</p>
+<pre class="term">── 預計更改清單 ──  合格 362、要修改 21、太短 1、讀不到 0
+  [修改] 皮卡丘\200秘密\bN3StB5t.wav  →  修剪 30.70 → 30 秒（保留中間）
+  [修改] 皮卡丘\200音樂\xxx.mp3  →  轉檔 .mp3 → .wav
+  [太短] 詹為真\200音樂\yyy.wav  →  太短 29.00 秒 → 不處理，只列出
+
+確定照這個清單執行嗎？ (y/n) [n]：</pre>
+      <p>可設定的目標：</p>
+      <div class="table-wrap"><table>
+        <tr><th>設定</th><th>選項</th><th>預設</th></tr>
+        <tr><td>目標格式</td><td>副檔名，例如 <code>wav</code></td><td><code>wav</code></td></tr>
+        <tr><td>目標時長</td><td>秒數，±0.05 秒內算合格</td><td>30</td></tr>
+        <tr><td>過長怎麼修剪</td><td>保留中間 / 保留開頭</td><td>保留中間</td></tr>
+        <tr><td>太短怎麼辦</td><td>不處理只列出 / 移到「資料夾_太短」/ 刪除</td><td>移到「資料夾_太短」</td></tr>
+        <tr><td>修改後</td><td>直接覆蓋原檔 / 另存到「資料夾_整理後」</td><td>直接覆蓋原檔</td></tr>
+        <tr><td>取樣率、聲道</td><td>數值，0 = 不改</td><td>不改</td></tr>
+      </table></div>
+      <p class="note"><b>保留中間怎麼算：</b>起點 =（原長 − 目標長度）÷ 2。例如 40 秒的檔案切第 5～35 秒。</p>
+    </section>
+
+    <section id="flow">
+      <h2>流程圖</h2>
+      <h3>主選單</h3>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+  A(["雙擊 音訊工具.bat"]) --> B["檢查 ffmpeg / ffprobe 是否存在"]
+  B --> C["讀 settings.json<br/>（沒有就用預設值）"]
+  C --> M{"主選單"}
+  M -- "1" --> CK["檢查 / 整理資料夾"]
+  M -- "2" --> DL["下載音樂"]
+  M -- "0" --> X(["離開"])
+  CK --> M
+  DL --> M
+</pre></div>
+
+      <h3>下載</h3>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+  M{"下載選單"} -- "0" --> BK(["回主選單"])
+  M -- "1 單筆 / 2 批量" --> SD["選儲存位置<br/>（預設上次的位置）"]
+  SD --> W{"單筆或批量？"}
+  W -- "單筆" --> U1["貼一個連結<br/>從第幾秒開始（預設 0）<br/>到第幾秒結束（Enter = 開始後 30 秒）"]
+  U1 --> V{"結束比開始晚？"}
+  V -- "否" --> F0(["提示錯誤，回主選單"])
+  V -- "是" --> LOOP
+  W -- "批量" --> U2["讀 TXT（一行一個連結）<br/>空行、# 開頭 → 略過"]
+  U2 --> U3["只問一次：<br/>全部從第幾秒開始、每段抓幾秒"]
+  U3 --> LOOP["逐一處理每個連結"]
+  LOOP --> Y["yt-dlp 只下載指定區段<br/>並查 _已下載影片ID.txt"]
+  Y --> Y1{"結果"}
+  Y1 -- "影片 ID 下載過" --> SK["重複略過"]
+  Y1 -- "錯誤（例如 403）" --> F2["記為失敗<br/>提示更新 yt-dlp"]
+  Y1 -- "成功" --> FF["ffmpeg 修成剛好指定長度<br/>16-bit wav"]
+  FF --> NM["存成「影片標題.wav」<br/>同名已存在 → 加 _開始秒數s"]
+  F2 & SK & NM --> NEXT{"還有下一個？"}
+  NEXT -- "是" --> LOOP
+  NEXT -- "否" --> END["顯示成功幾個<br/>寫紀錄 logs/下載_日期時間.csv<br/>問要不要記住設定"]
+</pre></div>
+
+      <h3>檢查 / 整理資料夾</h3>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+  S["顯示目前目標設定"] --> Q1{"要修改設定嗎？"}
+  Q1 -- "y" --> E["逐項輸入目標設定"]
+  E --> Q2{"儲存設定？"}
+  Q2 --> F
+  Q1 -- "n" --> F["輸入或拖入資料夾"]
+  F --> G{"資料夾存在？"}
+  G -- "否" --> R1(["顯示找不到，回主選單"])
+  G -- "是" --> H["掃描所有子資料夾的音訊檔<br/>wav mp3 flac m4a ogg aac opus webm"]
+  H --> P["每個檔案用 ffprobe 讀資訊"]
+  P --> P1{"讀得到？"}
+  P1 -- "否" --> T0["錯誤：只列出"]
+  P1 -- "是" --> P2{"比目標短？"}
+  P2 -- "是" --> T1["太短"]
+  P2 -- "否" --> P3["格式不對 → 轉檔<br/>比目標長 → 修剪<br/>取樣率、聲道（有設定才檢查）"]
+  P3 --> P4{"有要改的？"}
+  P4 -- "是" --> T2["要修改"]
+  P4 -- "否" --> T3["合格"]
+  T0 & T1 & T2 & T3 --> L["列出預計更改清單"]
+  L --> Q3{"確定執行？"}
+  Q3 -- "n" --> R2(["已取消，沒有改動任何檔案"])
+  Q3 -- "y" --> D1["太短：不處理 / 移走 / 刪除"]
+  Q3 -- "y" --> D2["要修改：ffmpeg 轉成 16-bit wav、修剪<br/>先寫暫存檔，成功才取代原檔<br/>原檔是其他格式 → 刪掉舊檔"]
+  D1 & D2 --> LOG["寫紀錄 logs/整理_日期時間.csv"]
+</pre></div>
+    </section>
+
+    <section id="files">
+      <h2>檔案說明</h2>
+      <div class="table-wrap"><table>
+        <tr><th>檔案</th><th>說明</th></tr>
+        <tr><td><code>音訊工具.bat</code></td><td>雙擊開啟選單（設定 UTF-8，中文不亂碼）</td></tr>
+        <tr><td><code>audio_tool.py</code></td><td>主程式</td></tr>
+        <tr><td><code>README.md</code> / <code>README.html</code></td><td>說明文件（內容相同，HTML 版可直接用瀏覽器開）</td></tr>
+        <tr><td><code>settings.json</code></td><td>記住的設定，第一次選擇儲存時產生（不進 git）</td></tr>
+        <tr><td><code>logs/</code></td><td>每次下載、整理的紀錄 csv（不進 git）</td></tr>
+        <tr><td><code>&lt;儲存資料夾&gt;/_已下載影片ID.txt</code></td><td>擋重複下載用的影片 ID 紀錄（yt-dlp <code>--download-archive</code>）</td></tr>
+      </table></div>
+    </section>
+
+    <section id="limits">
+      <h2>限制與注意事項</h2>
+      <ul>
+        <li><b>擋重複只看影片 ID</b>：同一首歌如果是另一部影片（別人上傳的），工具擋不住；音樂、語音存在不同資料夾時，兩邊各有一份紀錄。</li>
+        <li><b>批量時間是統一的</b>：沒辦法替 TXT 裡個別的連結指定不同時間；要不同時間請用單筆下載。</li>
+        <li><b>檔名用影片標題</b>，Windows 不允許的字元（<code>\ / : * ? " &lt; &gt; |</code>）會換成 <code>_</code>。</li>
+        <li><b>「直接覆蓋原檔」無法復原</b>，轉檔時舊格式的原檔會被刪掉；不確定時先改成「另存到新資料夾」。</li>
+        <li><b>下載出現 403 / ffmpeg exited</b>：多半是 YouTube 改了機制，執行 <code>python -m pip install -U yt-dlp</code> 更新後再試。</li>
+        <li><b>這份 HTML 的流程圖需要網路</b>（從 CDN 載入 Mermaid）；離線時只會顯示流程圖的原始碼。</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "neutral", securityLevel: "strict",
+                         fontFamily: "Noto Sans TC, Microsoft JhengHei, sans-serif" });
+  }
+</script>
+</body>
+</html>

@@ -173,6 +173,7 @@ flowchart TD
 |---|---|
 | `音訊工具.bat` | 雙擊開啟選單（設定 UTF-8，中文不亂碼） |
 | `audio_tool.py` | 主程式 |
+| `README.html` | 這份說明的網頁版，雙擊用瀏覽器開（流程圖需要網路） |
 | `settings.json` | 記住的設定，第一次選擇儲存時產生（不進 git） |
 | `logs/` | 每次下載、整理的紀錄 csv（不進 git） |
 | `<儲存資料夾>/_已下載影片ID.txt` | 擋重複下載用的影片 ID 紀錄（yt-dlp `--download-archive`） |
