@@ -17,6 +17,7 @@
 
 設定存在同資料夾的 settings.json（選單裡選擇儲存才會寫入），紀錄存在 logs/。
 需要：python -m yt_dlp、ffmpeg、ffprobe（都要在 PATH 裡）
+畫面仿 Claude Code 終端機風格（彩色、圖示）；不想要顏色可設環境變數 NO_COLOR=1
 
 用法：雙擊「音訊工具.bat」，或 python D:/D_drive_BACKUP/Code/audio_tool/audio_tool.py
 """
@@ -28,6 +29,9 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
+import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_PATH = os.path.join(HERE, "settings.json")
@@ -61,6 +65,100 @@ LABEL = {
 }
 
 
+# ================= 介面（仿 Claude Code 終端機風格） =================
+if os.name == "nt":
+    os.system("")                   # 開啟 Windows 主控台的 ANSI 色碼支援
+COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+
+
+def _style(code):
+    return (lambda t: f"\x1b[{code}m{t}\x1b[0m") if COLOR else str
+
+
+accent = _style("38;2;215;119;87")  # Claude 橘
+dim    = _style("90")
+bold   = _style("1")
+green  = _style("32")
+yellow = _style("33")
+red    = _style("31")
+SPIN   = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+
+def width(s):
+    """終端機顯示寬度：中文、emoji 佔 2 格"""
+    s = re.sub(r"\x1b\[[0-9;]*m", "", str(s))
+    return sum(0 if unicodedata.combining(ch) or ch == "\ufe0f" else
+               2 if unicodedata.east_asian_width(ch) in "WF" else 1 for ch in s)
+
+
+def panel(title, rows):
+    """圓角框（右邊不封口，中文字寬不準也不會歪）。rows：字串，或 (標籤, 內容)"""
+    kw = max((width(r[0]) for r in rows if isinstance(r, tuple)), default=0)
+    print("\n" + accent("╭─ ") + bold(title) + " " + accent("─" * max(4, 34 - width(title))))
+    for r in rows:
+        if isinstance(r, tuple):
+            r = dim(r[0] + " " * (kw - width(r[0]))) + "   " + str(r[1])
+        print(accent("│") + "  " + r)
+    print(accent("╰─"))
+
+
+def step(msg):
+    print(f"\n{accent('●')} {msg}")
+
+
+def sub(msg):
+    print(f"  {dim('└')} {msg}")
+
+
+def tree(lines):
+    for i, x in enumerate(lines):
+        print(f"  {dim('└' if i == len(lines) - 1 else '├')} {x}")
+
+
+def ok(msg):
+    print(f"  {green('✔')} {msg}")
+
+
+def warn(msg):
+    print(f"  {yellow('▲')} {msg}")
+
+
+def err(msg):
+    print(f"  {red('✘')} {msg}")
+
+
+def progress(i, n, text=""):
+    w = 24
+    f = w * i // n if n else w
+    print(f"\r  {accent('━' * f)}{dim('━' * (w - f))} {i}/{n} {text}", end="", flush=True)
+
+
+class spinner:
+    """長時間工作時顯示轉圈圈＋經過秒數"""
+    def __init__(self, text):
+        self.text = text
+
+    def __enter__(self):
+        self.stop = threading.Event()
+        self.t = threading.Thread(target=self._run, daemon=True)
+        if COLOR:
+            self.t.start()
+        return self
+
+    def _run(self):
+        t0, i = time.time(), 0
+        while not self.stop.wait(0.1):
+            print(f"\r  {accent(SPIN[i % len(SPIN)])} {self.text} {dim(f'({time.time() - t0:.0f}s)')}",
+                  end="", flush=True)
+            i += 1
+
+    def __exit__(self, *_):
+        self.stop.set()
+        if COLOR:
+            self.t.join()
+            print("\r\x1b[2K", end="", flush=True)
+
+
 # ================= 共用 =================
 def load_settings():
     s = json.loads(json.dumps(DEFAULTS))
@@ -70,35 +168,41 @@ def load_settings():
             for sec in s:
                 s[sec].update(saved.get(sec, {}))
         except Exception as e:
-            print(f"⚠️ settings.json 讀取失敗，改用預設值：{e}")
+            warn(f"settings.json 讀取失敗，改用預設值：{e}")
     return s
 
 
 def save_settings(s):
     with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
         json.dump(s, f, ensure_ascii=False, indent=2)
-    print(f"✅ 設定已儲存：{SETTINGS_PATH}")
+    ok(f"設定已儲存 {dim(SETTINGS_PATH)}")
 
 
 def ask(prompt, default=""):
     """輸入；直接按 Enter 用預設值。拖曳資料夾進視窗會帶引號，順便去掉"""
-    hint = f" [{default}]" if default != "" else ""
-    v = input(f"{prompt}{hint}：").strip().strip('"').strip("'")
+    hint = " " + dim(f"[{default}]") if default != "" else ""
+    v = input(f"{accent('›')} {prompt}{hint} ").strip().strip('"').strip("'")
     return v if v else str(default)
 
 
 def yes(prompt, default="n"):
-    return ask(f"{prompt} (y/n)", default).lower().startswith("y")
+    return ask(f"{prompt} {dim('(y/n)')}", default).lower().startswith("y")
 
 
 def choose(prompt, options, current):
     """options = {值: 說明}，回傳選到的值"""
     keys = list(options)
-    print(prompt)
+    print(f"\n{accent('?')} {bold(prompt)}")
     for i, k in enumerate(keys, 1):
-        print(f"   {i}. {options[k]}{'  ← 目前' if k == current else ''}")
-    v = ask("   選擇", keys.index(current) + 1 if current in keys else 1)
+        mark = accent("●") if k == current else dim("○")
+        print(f"    {mark} {accent(i)}. {options[k]}{dim('  ← 目前') if k == current else ''}")
+    v = ask("選擇", keys.index(current) + 1 if current in keys else 1)
     return keys[int(v) - 1] if v.isdigit() and 1 <= int(v) <= len(keys) else current
+
+
+def menu(title, items):
+    """items = [(按鍵, 圖示, 說明)]"""
+    panel(title, [f"{accent(k)}  {icon}  {text}" for k, icon, text in items])
 
 
 def parse_time(t):
@@ -134,17 +238,20 @@ def write_log(kind, rows, header):
         w = csv.writer(f)
         w.writerow(header)
         w.writerows(rows)
-    print(f"📄 紀錄已存：{path}")
+    sub(f"📄 紀錄已存 {dim(path)}")
 
 
 # ================= 1. 檢查 / 整理 =================
 def show_check_settings(c):
-    print("\n── 目前的目標設定 ──")
-    print(f"  格式：.{c['target_ext']}    時長：{c['target_seconds']} 秒（誤差 ±{c['tolerance']} 秒內算合格）")
-    print(f"  過長：修剪，{LABEL['trim_mode'][c['trim_mode']]}")
-    print(f"  太短：{LABEL['short_action'][c['short_action']]}")
-    print(f"  結果：{LABEL['save_mode'][c['save_mode']]}")
-    print(f"  取樣率：{c['target_sr'] or '不改'}    聲道：{c['target_channels'] or '不改'}")
+    panel("🎯 目前的目標設定", [
+        ("格式", f".{c['target_ext']}"),
+        ("時長", f"{c['target_seconds']:g} 秒 " + dim(f"（誤差 ±{c['tolerance']} 秒內算合格）")),
+        ("過長", f"修剪，{LABEL['trim_mode'][c['trim_mode']]}"),
+        ("太短", LABEL["short_action"][c["short_action"]]),
+        ("結果", LABEL["save_mode"][c["save_mode"]]),
+        ("取樣率", c["target_sr"] or dim("不改")),
+        ("聲道", c["target_channels"] or dim("不改")),
+    ])
 
 
 def edit_check_settings(s):
@@ -211,9 +318,10 @@ def check_folder(s):
         edit_check_settings(s)
         show_check_settings(c)
 
-    root = os.path.normpath(ask("\n要檢查的資料夾（可直接把資料夾拖進來）", c["last_folder"]))
+    print()
+    root = os.path.normpath(ask("要檢查的資料夾（可直接把資料夾拖進來）", c["last_folder"]))
     if not os.path.isdir(root):
-        print("❌ 找不到這個資料夾")
+        err("找不到這個資料夾")
         return
     c["last_folder"] = root
     out_root   = root + "_整理後"
@@ -221,35 +329,40 @@ def check_folder(s):
 
     files = sorted(os.path.join(dp, f) for dp, _, fs in os.walk(root) for f in fs
                    if f.lower().endswith(AUDIO_EXT))
-    print(f"\n掃描 {len(files)} 個音訊檔中…")
+    step(f"掃描 {bold(len(files))} 個音訊檔 {dim(root)}")
     plans = []
     for i, p in enumerate(files, 1):
         plans.append((p,) + plan_file(p, c))
-        print(f"\r  {i}/{len(files)}", end="")
+        progress(i, len(files))
     print()
 
     # ---- 預計更改清單 ----
     count = {k: sum(1 for x in plans if x[1] == k) for k in ("ok", "fix", "short", "error")}
-    print(f"\n── 預計更改清單 ──  合格 {count['ok']}、要修改 {count['fix']}、太短 {count['short']}、讀不到 {count['error']}")
-    for p, act, note, info in plans:
-        if act != "ok":
-            print(f"  [{ {'fix': '修改', 'short': '太短', 'error': '錯誤'}[act] }] {os.path.relpath(p, root)}  →  {note}")
+    step(bold("預計更改清單") + "  " + "  ".join([
+        green(f"✔ 合格 {count['ok']}"), yellow(f"✎ 要修改 {count['fix']}"),
+        red(f"↓ 太短 {count['short']}"), dim(f"✘ 讀不到 {count['error']}")]))
+    tag = {"fix": yellow("✎ 修改"), "short": red("↓ 太短"), "error": dim("✘ 錯誤")}
+    tree([f"{tag[act]}  {os.path.relpath(p, root)}  {dim('→ ' + note)}"
+          for p, act, note, info in plans if act != "ok"])
     if c["save_mode"] == "new_folder":
-        print(f"\n  另存位置：{out_root}（合格的檔案也會複製過去，整理後的資料夾就是完整資料集）")
+        sub(f"另存位置：{out_root} {dim('（合格的檔案也會複製過去，整理後的資料夾就是完整資料集）')}")
     if c["short_action"] == "delete" and count["short"]:
-        print(f"  ⚠️ 會刪除 {count['short']} 個太短的檔案，刪除後救不回來")
+        warn(f"會刪除 {count['short']} 個太短的檔案，刪除後救不回來")
     if count["fix"] + count["short"] == 0 and c["save_mode"] == "overwrite":
-        print("全部合格，不用處理 ✅")
+        ok("全部合格，不用處理")
         return
-    if not yes("\n確定照這個清單執行嗎？"):
-        print("已取消，沒有改動任何檔案")
+    print()
+    if not yes("確定照這個清單執行嗎？"):
+        sub("已取消，沒有改動任何檔案")
         return
 
     # ---- 執行 ----
+    step("執行中")
     log = []
     for p, act, note, info in plans:
         rel = os.path.relpath(p, root)
         new_rel = os.path.splitext(rel)[0] + "." + c["target_ext"]
+        failed = False
         try:
             if act == "error":
                 result = "略過"
@@ -286,12 +399,16 @@ def check_folder(s):
                     result = "合格"
         except Exception as e:
             result = f"失敗：{e}"
+            failed = True
         log.append([rel, act, note, f"{info['dur']:.2f}" if info else "", info["sr"] if info else "",
                     info["ch"] if info else "", result])
-        if act != "ok":
-            print(f"  {rel}：{result}")
-    print(f"\n完成 ✅")
+        if failed:
+            err(f"{rel}：{result}")
+        elif act != "ok":
+            ok(f"{rel}  {dim(result)}")
+    step(green("完成"))
     write_log("整理", log, ["檔案", "類型", "預計動作", "原時長", "原取樣率", "原聲道", "結果"])
+    print()
     save_settings(s) if yes("要記住這次的資料夾嗎？", "y") else None
 
 
@@ -346,10 +463,13 @@ def pick_save_dir(d):
 
 def download_menu(s):
     d = s["download"]
-    print(f"\n── 下載 ──  儲存位置：{d['save_dir'] or '（尚未設定）'}")
-    print("1. 單筆下載（貼連結，自己指定第幾秒到第幾秒）")
-    print(f"2. 批量下載（讀 TXT，全部統一：上次是從 {d['batch_start']} 開始抓 {d['seconds']:g} 秒）")
-    print("0. 返回")
+    menu("📥 下載音樂", [
+        ("1", "🔗", "單筆下載 " + dim("貼連結，自己指定第幾秒到第幾秒")),
+        ("2", "📃", "批量下載 " + dim(f"讀 TXT，上次是從 {d['batch_start']} 開始抓 {d['seconds']:g} 秒")),
+        ("0", "↩ ", "返回"),
+    ])
+    sub(f"儲存位置：{d['save_dir'] or dim('（尚未設定）')}")
+    print()
     m = ask("選擇", "1")
     if m not in ("1", "2"):
         return
@@ -363,13 +483,13 @@ def download_menu(s):
             ed = parse_time(ask("到第幾秒結束（直接 Enter = 開始後 "
                                 f"{d['seconds']:g} 秒）", fmt_time(st + float(d["seconds"]))))
             if ed <= st:
-                print("❌ 結束時間要比開始時間晚")
+                err("結束時間要比開始時間晚")
                 return
             jobs.append((url, st, ed - st))
         else:
             txt = ask("TXT 檔路徑（可直接拖進來）", d["last_txt"])
             if not os.path.isfile(txt):
-                print("❌ 找不到這個檔案")
+                err("找不到這個檔案")
                 return
             d["last_txt"] = txt
             d["batch_start"] = ask("全部從第幾秒開始（例：30、1:15）", d["batch_start"])
@@ -381,21 +501,28 @@ def download_menu(s):
                 if line and not line.startswith("#"):
                     urls.append(line.split()[0])    # 一行一個連結；後面多寫的字不使用
             jobs = [(u, st, float(d["seconds"])) for u in urls]
-            print(f"  讀到 {len(jobs)} 個連結，全部從 {fmt_time(st)} 開始抓 {d['seconds']:g} 秒")
+            step(f"讀到 {bold(len(jobs))} 個連結，全部從 {fmt_time(st)} 開始抓 {d['seconds']:g} 秒")
     except ValueError:
-        print("❌ 時間格式看不懂，請用 35、1:15 或 1:02:03 這種寫法")
+        err("時間格式看不懂，請用 35、1:15 或 1:02:03 這種寫法")
         return
 
-    log, ok = [], 0
+    log, ok_n = [], 0
     for i, (url, st, secs) in enumerate(jobs, 1):
-        print(f"[{i}/{len(jobs)}] {fmt_time(st)} ～ {fmt_time(st + secs)}（{secs:g} 秒）  {url}")
-        status, msg = download_one(url, st, secs, d["save_dir"])
-        ok += status == "成功"
-        print(f"    {'✅' if status == '成功' else '⏭️' if status == '重複略過' else '❌'} {status}：{os.path.basename(msg) if status == '成功' else msg}")
+        step(f"{dim(f'[{i}/{len(jobs)}]')} {url}")
+        with spinner(f"下載 {fmt_time(st)} ～ {fmt_time(st + secs)}（{secs:g} 秒）"):
+            status, msg = download_one(url, st, secs, d["save_dir"])
+        ok_n += status == "成功"
+        if status == "成功":
+            sub(f"{green('✔')} {os.path.basename(msg)}  {dim(f'{fmt_time(st)} ～ {fmt_time(st + secs)}')}")
+        elif status == "重複略過":
+            sub(f"{dim('⏭ ' + msg)}")
+        else:
+            sub(f"{red('✘ 失敗')} {msg}")
         log.append([url, fmt_time(st), fmt_time(st + secs), status, msg])
     shutil.rmtree(os.path.join(d["save_dir"], "_tmp"), ignore_errors=True)
-    print(f"\n完成：成功 {ok} / 共 {len(jobs)}")
+    step(f"完成：{green(f'成功 {ok_n}')} / 共 {len(jobs)}")
     write_log("下載", log, ["連結", "開始", "結束", "狀態", "檔案 / 訊息"])
+    print()
     if yes("要記住儲存位置、TXT 路徑和批量時間設定嗎？", "y"):
         save_settings(s)
 
@@ -404,16 +531,18 @@ def download_menu(s):
 def main():
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
-            print(f"⚠️ 找不到 {tool}，請先安裝 ffmpeg 並加入 PATH")
+            warn(f"找不到 {tool}，請先安裝 ffmpeg 並加入 PATH")
     if not shutil.which("deno"):
-        print("⚠️ 找不到 deno：YouTube 有些影片會下載失敗（not available）。"
-              "安裝：winget install DenoLand.Deno，裝完重開視窗")
+        warn("找不到 deno：YouTube 有些影片會下載失敗（not available）。"
+             "安裝：winget install DenoLand.Deno，裝完重開視窗")
     s = load_settings()
     while True:
-        print("\n═══════ 音訊整理工具 ═══════")
-        print("1. 檢查 / 整理資料夾（時長、格式）")
-        print("2. 下載音樂")
-        print("0. 離開")
+        menu(accent("✻") + " " + bold("音訊整理工具"), [
+            ("1", "🔍", "檢查 / 整理資料夾 " + dim("時長、格式")),
+            ("2", "📥", "下載音樂 " + dim("YouTube 指定區段 → wav")),
+            ("0", "👋", "離開"),
+        ])
+        print()
         m = ask("選擇", "1")
         try:
             if m == "1":
@@ -423,7 +552,8 @@ def main():
             elif m == "0":
                 break
         except KeyboardInterrupt:
-            print("\n（已中斷，回到主選單）")
+            print()
+            warn("已中斷，回到主選單")
 
 
 if __name__ == "__main__":
