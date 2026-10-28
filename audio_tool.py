@@ -75,7 +75,7 @@ def _style(code):
     return (lambda t: f"\x1b[{code}m{t}\x1b[0m") if COLOR else str
 
 
-accent = _style("38;2;215;119;87")  # Claude 橘
+accent = _style("38;2;97;175;239")  # 主色：藍（Claude 橘是 215;119;87）
 dim    = _style("90")
 bold   = _style("1")
 green  = _style("32")
